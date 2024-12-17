@@ -15,7 +15,7 @@ const providers = ref([
   { id: 10, name: 'Julia Braun', field: 'Elektriker', company: 'Braun Elektro', state: 'Saarland', email: 'julia.b@example.com', phone: '0681123456' },
 ]);
 
-// Beispiel-Daten für Aufträge (mehr gemockte Aufträge)
+// Beispiel-Daten für Aufträge
 const orders = ref([
   { id: 1, jobName: 'Stromanschluss Neubau', client: 'Bau GmbH', state: 'Bayern', timeSpan: '01.01.2024 - 15.01.2024', compensation: '2000€', note: 'Neubau eines Wohnhauses', assignedProvider: null },
   { id: 2, jobName: 'Sanierung Heizung', client: 'Sanierungsfirma', state: 'Berlin', timeSpan: '05.02.2024 - 20.02.2024', compensation: '1500€', note: 'Heizungssystem im Bürogebäude', assignedProvider: null },
@@ -33,16 +33,16 @@ const filteredProviders = computed(() => {
   const query = searchQuery.value.toLowerCase();
   if (!query) return providers.value;
   return providers.value.filter((provider) =>
-      Object.values(provider).some(value => value.toString().toLowerCase().includes(query))
+      Object.values(provider).some((value) => value.toString().toLowerCase().includes(query))
   );
 });
 
 // Funktion zur Hervorhebung
 const highlightMatch = (text, query) => {
-  if (!query) return text; // Keine Hervorhebung, wenn keine Suche
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape Sonderzeichen
+  if (!query) return text;
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  return text.toString().replace(regex, '<strong>$1</strong>'); // Übereinstimmungen fett markieren
+  return text.toString().replace(regex, '<strong>$1</strong>');
 };
 
 // Bearbeitungs-, Lösch- und Hinzufügungsstatus
@@ -94,7 +94,7 @@ const addNewProvider = () => {
   editingRowId.value = null;
   deletingRowId.value = null;
   tempData.value = {
-    id: providers.value.length + 1, // Dummy ID
+    id: providers.value.length + 1,
     name: '',
     field: '',
     company: '',
@@ -123,12 +123,15 @@ const cancelNewProvider = () => {
   tempData.value = {};
 };
 
-// Funktion für das Zuweisen von Dienstleistern zu Aufträgen
-const assignProviderToOrder = (orderId: number, providerId: number) => {
-  const order = orders.value.find(order => order.id === orderId);
-  const provider = providers.value.find(provider => provider.id === providerId);
-  if (order && provider) {
-    order.assignedProvider = provider;
+// Validierung für das Zuweisen von Dienstleistern
+const validateProviderAssignment = (orderId: number, providerName: string) => {
+  const provider = providers.value.find((p) => p.name === providerName);
+  if (!provider) {
+    alert('Der eingegebene Dienstleister ist ungültig. Bitte wählen Sie einen Dienstleister aus der Liste.');
+    const order = orders.value.find((o) => o.id === orderId);
+    if (order) {
+      order.assignedProvider = null;
+    }
   }
 };
 </script>
@@ -163,6 +166,7 @@ const assignProviderToOrder = (orderId: number, providerId: number) => {
         </tr>
         </thead>
         <tbody>
+        <!-- Neue Dienstleister hinzufügen -->
         <tr v-if="addingNew">
           <td><input v-model="tempData.name" placeholder="Name eingeben" /></td>
           <td><input v-model="tempData.field" placeholder="Fachgebiet eingeben" /></td>
@@ -175,6 +179,8 @@ const assignProviderToOrder = (orderId: number, providerId: number) => {
             <i class="pi pi-times" @click="cancelNewProvider" style="margin-left: 10px;" />
           </td>
         </tr>
+
+        <!-- Dienstleister anzeigen -->
         <tr v-for="provider in filteredProviders" :key="provider.id">
           <td v-if="editingRowId === provider.id">
             <input v-model="tempData.name" />
@@ -249,7 +255,17 @@ const assignProviderToOrder = (orderId: number, providerId: number) => {
           <td>{{ order.compensation }}</td>
           <td>{{ order.note }}</td>
           <td>
-            <input v-model="order.assignedProvider" list="provider-list" placeholder="Dienstleister zuordnen" />
+            <input
+                v-model="order.assignedProvider"
+                @change="validateProviderAssignment(order.id, order.assignedProvider)"
+                list="provider-list"
+                placeholder="Dienstleister zuordnen"
+            />
+            <button
+                @click="validateProviderAssignment(order.id, order.assignedProvider)"
+                class="pi pi-check"
+                style="margin-left: 10px; border: none; background: none; cursor: pointer;">
+            </button>
             <datalist id="provider-list">
               <option v-for="provider in providers" :key="provider.id" :value="provider.name" />
             </datalist>
